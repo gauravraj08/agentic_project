@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Audit Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .status-box {
+            padding: 15px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .discrepancies {
+            margin-bottom: 20px;
+        }
+
+        .discrepancies ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Invoice Audit Report</h1>
+
+        <div class="status-box fail">
+            Status: FAIL
+        </div>
+
+        <div class="discrepancies">
+            <h2>Discrepancies:</h2>
+            <ul>
+                <li>Missing mandatory field: total_amount</li>
+                <li>Invalid PO Number: Po-1005</li>
+            </ul>
+        </div>
+
+        <h2>Invoice Data:</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Vendor Name</td>
+                    <td>SwiftMove Couriers</td>
+                </tr>
+                <tr>
+                    <td>Invoice Number</td>
+                    <td>INV-10o5</td>
+                </tr>
+                <tr>
+                    <td>Validation Status</td>
+                    <td>FAIL</td>
+                </tr>
+                <tr>
+                    <td>Confidence</td>
+                    <td>1.0</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Line Items:</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                    <th>PO Number</th>
+                    <th>Item Code</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Fuel Surcharge</td>
+                    <td>N/A</td>
+                    <td>N/A</td>
+                    <td>N/A</td>
+                    <td>Po-1005</td>
+                    <td>N/A</td>
+                </tr>
+                <tr>
+                    <td>Express Boxes</td>
+                    <td>39.0</td>
+                    <td>222.5</td>
+                    <td>N/A</td>
+                    <td>N/A</td>
+                    <td>N/A</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

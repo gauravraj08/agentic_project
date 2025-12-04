@@ -1,0 +1,15 @@
+validation_rules:
+  # Tolerance for numeric matches
+  price_tolerance_percent: 5.0
+
+  # Required fields that must not be null/empty
+  mandatory_fields:
+    - invoice_no
+    - invoice_date
+    - vendor_name
+    - total_amount
+    - currency
+
+  # Logic switches
+  auto_reject_if_po_missing: true
+  allow_partial_matches: false
