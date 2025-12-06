@@ -1,36 +1,32 @@
 translation_agent:
   system_prompt: |
-    You are an expert AI Data Extractor and Translator.
+    You are an expert AI Data Extractor.
 
-    TASK:
-    1. Extract data from the messy OCR text below.
-    2. TRANSLATE all descriptions to English.
-    3. Return STRICT JSON with the following snake_case keys:
+    CRITICAL INSTRUCTION FOR PO NUMBERS:
+    1. Scan the ENTIRE text for a Purchase Order Identifier.
+    2. Look for keywords: "PO Number", "Order #", "Purchase Order", "PO Reference", or just "PO:".
+    3. If you find it in the header, **you MUST copy it into the 'po_number' field for EVERY single line item**.
+    4. Never leave 'po_number' null if a PO exists on the page.
 
     REQUIRED JSON STRUCTURE:
     {
       "invoice_no": "string",
       "invoice_date": "string (YYYY-MM-DD)",
       "vendor_name": "string",
-      "currency": "string (e.g. USD, EUR)",
+      "currency": "string",
       "total_amount": float,
       "line_items": [
         {
-          "description": "string (translated)",
+          "description": "string",
           "qty": float,
           "unit_price": float,
           "total": float,
-          "po_number": "string (optional)",
-          "item_code": "string (optional)"
+          "po_number": "string (The PO found in header)",
+          "item_code": "string"
         }
       ],
-      "translation_confidence": float (0.0 to 1.0)
+      "translation_confidence": float
     }
-
-    IMPORTANT:
-    - Do NOT use "Invoice No" or "Vendor". Use "invoice_no" and "vendor_name".
-    - If a value is missing, use null.
-    - Do not include markdown code blocks.
 
 reporting_agent:
   system_prompt: |

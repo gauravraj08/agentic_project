@@ -1,136 +1,131 @@
-import sys
-import time
+import json
 from langgraph.graph import StateGraph, END
+from typing import TypedDict, List, Dict, Any, Optional
 
-# Import Schemas
-from schemas import InvoiceState
-
-# Import Nodes
-from agents.monitor_agent import monitor_node
+# Import Agents
 from agents.extractor_agent import extractor_node
 from agents.validation_agent import validation_node
-
-# Import Google ADK Agents (Wrappers)
 from agents.translation_agent import TranslationAgent
 from agents.reporting_agent import ReportingAgent
 from protocols.a2a import AgentMessage
+from tools.file_watcher import InvoiceWatcherTool
 
-# In main_workflow.py
+# Define Shared Memory
+class InvoiceState(TypedDict):
+    file_path: str
+    file_name: str
+    raw_text: str
+    structured_data: Optional[dict]
+    validation_results: Dict[str, Any]
+    is_valid: bool
+    discrepancies: List[str]
+    final_report_html: str
+    status: str
+    error_message: str
+    is_rerun: bool
+    corrected_data: dict
 
-def translation_node(state: dict) -> dict:
-    print(" [Workflow] Translator: Calling Google ADK...")
-    
-    # --- DEBUG START ---
-    raw_text = state.get("raw_text", "")
-    print(f"   [DEBUG] Raw Text Length: {len(raw_text)}")
-    print(f"   [DEBUG] Raw Text Snippet: {raw_text[:100].replace(chr(10), ' ')}...") # Print first 100 chars
-    
-    if len(raw_text.strip()) < 10:
-        print("   [ERROR] Text is too short! OCR likely failed.")
-        return {"status": "FAILED", "error_message": "OCR failed to extract sufficient text"}
-    # --- DEBUG END ---
+# --- NODE DEFINITIONS ---
 
-    agent = TranslationAgent()
+def monitor_node(state):
+    print(f"\n--- [1] MONITOR NODE ---")
+    # Support for UI-driven file selection
+    if state.get("file_name"):
+        path = f"data/incoming/{state['file_name']}"
+        print(f"   Targeting File: {path}")
+        return {"file_path": path, "status": "PROCESSING"}
     
-    msg = AgentMessage(
-        sender="orchestrator", 
-        receiver="translator", 
-        task_type="TRANSLATE_EXTRACT", 
-        payload={"raw_text": raw_text}
-    )
-    
-    response = agent.process_message(msg)
-    
-    if response.status == "SUCCESS":
-        data = response.payload["structured_data"]
-        # --- DEBUG START ---
-        print(f"   [DEBUG] LLM Output: {data}")
-        # --- DEBUG END ---
-        return {"structured_data": data}
-    else:
-        return {"status": "FAILED", "error_message": "Translation Failed"}
-
-def reporting_node(state: dict) -> dict:
-    print(" [Workflow] Reporter: Generating Summary...")
-    
-    # Check Data Availability
-    data = state.get("structured_data")
-    if not data:
-        print("   [Error] Reporter: No structured data found.")
-        return {"status": "FAILED", "error_message": "No Data"}
-
-    # Prepare Data
-    report_data = {
-        "vendor_name": data.get("vendor_name"),
-        "invoice_no": data.get("invoice_no"),
-        "validation_status": "PASS" if state.get("is_valid") else "FAIL",
-        "discrepancies": state.get("discrepancies", []),
-        "confidence": data.get("translation_confidence", 0.0),
-        # Pass full line items for the HTML table
-        "line_items": data.get("line_items", []) 
-    }
-    
-    # Call Agent
-    agent = ReportingAgent()
-    msg = AgentMessage("orchestrator", "reporter", "GENERATE_REPORT", report_data)
-    
-    response = agent.process_message(msg)
-    
-    if response.status == "SUCCESS":
-        # Return success AND the HTML so UI can render it immediately
+    # Default Watcher logic
+    res = InvoiceWatcherTool().execute()
+    if res["found"]:
         return {
-            "final_report_html": response.payload["report_html"], 
-            "status": "COMPLETED"
+            "file_path": res["file_path"], 
+            "file_name": res["file_name"], 
+            "status": "PROCESSING"
         }
-    else:
-        # Log the specific error from the agent
-        error = response.payload.get('error', 'Unknown Error')
-        print(f"   [Error] Reporting Agent Failed: {error}")
-        return {"status": "FAILED", "error_message": error}
+    return {"status": "WAITING"}
+
+def extractor_wrapper(state):
+    # Wrapper to print debug info
+    print(f"\n--- [2] EXTRACTOR NODE ---")
+    return extractor_node(state)
+
+def translation_node(state):
+    print(f"\n--- [3] TRANSLATOR NODE ---")
+    if state.get("status") == "FAILED": 
+        print("   Skipping (Previous Step Failed)")
+        return {"status": "FAILED"}
     
-# --- Graph Construction ---
+    agent = TranslationAgent()
+    msg = AgentMessage("orch", "trans", "TRANSLATE_EXTRACT", {"raw_text": state["raw_text"]})
+    
+    # Call Agent (which calls FastMCP Port 8002)
+    res = agent.process_message(msg)
+    
+    if res.status == "SUCCESS": 
+        data = res.payload["structured_data"]
+        print(f"   DATA EXTRACTED:\n{json.dumps(data, indent=2)}") 
+        return {"structured_data": data}
+        
+    print(f"   TRANSLATION FAILED: {res.payload}")
+    return {"status": "FAILED", "error_message": res.payload.get("error")}
+
+def validation_wrapper(state):
+    print(f"\n--- [4] VALIDATION NODE ---")
+    if state.get("status") == "FAILED": return {"status": "FAILED"}
+    
+    # Run the agent logic
+    result = validation_node(state)
+    
+    print(f"   VALIDATION RESULT: {result}")
+    return result
+
+def reporting_node(state):
+    print(f"\n--- [5] REPORTING NODE ---")
+    if state.get("status") == "FAILED": 
+        print("   Skipping Report (Status is FAILED)")
+        return {"status": "FAILED"}
+        
+    data = state.get("structured_data")
+    if not data: 
+        print("   CRITICAL: No Data for Reporting")
+        return {"status": "FAILED", "error_message": "No structured data"}
+        
+    # Merge Full Data with Status
+    report_data = data.copy()
+    report_data["validation_status"] = "PASS" if state.get("is_valid") else "FAIL"
+    report_data["discrepancies"] = state.get("discrepancies", [])
+    
+    print(f"   Sending Full Data to Reporter ({len(str(report_data))} chars)")
+    
+    agent = ReportingAgent()
+    msg = AgentMessage("orch", "rep", "GENERATE_REPORT", report_data)
+    res = agent.process_message(msg)
+    
+    if res.status == "SUCCESS":
+        print("   Report Generated Successfully.")
+        return {"final_report_html": res.payload["report_html"], "status": "COMPLETED"}
+        
+    print(f"   REPORTING FAILED: {res.payload}")
+    return {"status": "FAILED", "error_message": res.payload.get("error")}
+
+# --- GRAPH BUILDER ---
+
 def build_graph():
-    workflow = StateGraph(InvoiceState)
-
-    # Add Nodes
-    workflow.add_node("monitor", monitor_node)
-    workflow.add_node("extractor", extractor_node)
-    workflow.add_node("translator", translation_node)
-    workflow.add_node("validator", validation_node)
-    workflow.add_node("reporter", reporting_node)
-
-    # Define Edges (The Flow)
-    workflow.set_entry_point("monitor")
-
-    # Conditional Logic: Did we find a file?
-    def check_file_found(state):
-        if state.get("status") == "WAITING":
-            return "end" # Loop or Stop (For demo we stop, usually loop)
-        return "continue"
-
-    workflow.add_conditional_edges(
-        "monitor",
-        check_file_found,
-        {"continue": "extractor", "end": END}
-    )
-
-    workflow.add_edge("extractor", "translator")
-    workflow.add_edge("translator", "validator")
-    workflow.add_edge("validator", "reporter")
-    workflow.add_edge("reporter", END)
-
-    return workflow.compile()
-
-# --- Main Execution Entry Point ---
-if __name__ == "__main__":
-    print("Initializing AI Invoice Auditor Workflow...")
-    app = build_graph()
+    wf = StateGraph(InvoiceState)
     
-    # Initial State
-    initial_state = {"status": "STARTING"}
+    wf.add_node("monitor", monitor_node)
+    wf.add_node("extractor", extractor_wrapper)
+    wf.add_node("translator", translation_node)
+    wf.add_node("validator", validation_wrapper)
+    wf.add_node("reporter", reporting_node)
     
-    # Run
-    for output in app.stream(initial_state):
-        pass # The print statements in nodes will show progress
+    wf.set_entry_point("monitor")
     
-    print("\nWorkflow Finished.")
+    wf.add_edge("monitor", "extractor")
+    wf.add_edge("extractor", "translator")
+    wf.add_edge("translator", "validator")
+    wf.add_edge("validator", "reporter")
+    wf.add_edge("reporter", END)
+    
+    return wf.compile()

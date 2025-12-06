@@ -1,38 +1,24 @@
 import os
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
 
 load_dotenv()
+API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
-# Determine Embeddings Model based on keys
-embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
-
+# Use Google Embeddings (Reliable and Free-tier friendly)
+embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=API_KEY)
 DB_PATH = "faiss_index"
 
-def retrieval_node(state: dict) -> dict:
-    """
-    Searches the Vector DB for invoice context.
-    """
+def retrieval_node(state):
     question = state["question"]
-    print(f" [RAG] Retriever: Searching for '{question}'...")
-    
-    if not os.path.exists(DB_PATH):
-        return {"context": [], "error": "No invoices indexed yet."}
+    print(f" [RAG] Retrieving context for: {question}")
     
     try:
-        vector_store = FAISS.load_local(
-            DB_PATH, 
-            embeddings, 
-            allow_dangerous_deserialization=True
-        )
-        retriever = vector_store.as_retriever(search_kwargs={"k": 3})
-        docs = retriever.invoke(question)
-        
-        # Format docs into a string
-        context_text = "\n\n".join([d.page_content for d in docs])
-        return {"context": docs, "context_text": context_text}
-        
+        db = FAISS.load_local(DB_PATH, embeddings, allow_dangerous_deserialization=True)
+        docs = db.similarity_search(question, k=3)
+        context = "\n\n".join([d.page_content for d in docs])
+        return {"context_text": context, "context": docs}
     except Exception as e:
-        return {"context": [], "error": str(e)}
+        print(f" [RAG] Retrieval Error: {e}")
+        return {"context_text": "No documents found.", "context": []}

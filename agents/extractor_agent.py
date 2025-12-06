@@ -1,28 +1,46 @@
-from tools.ocr_engine import DataHarvesterTool
+import json
+from protocols.mcp_client import sync_mcp_call
+from utils.logger import get_logger
+
+logger = get_logger("AGENT_EXTRACTOR")
+MCP_SERVER_PORT = 8001
 
 def extractor_node(state: dict) -> dict:
-    """
-    Runs Hybrid OCR on the file.
-    Supports skipping OCR if this is a Re-Run with corrected data.
-    """
-    # Check if this is a Re-Run initiated by the Human
+    # 1. Check for Human Override (Re-run)
     if state.get("is_rerun") and state.get("corrected_data"):
-        print(" [Workflow] Extractor: Skipping OCR (Using Human Corrected Data)...")
-        # Pass the corrected data through as if it was extracted
+        logger.info("Skipping OCR (Using Human Data)")
         return {
             "raw_text": "Human Corrected Data", 
-            "structured_data": state["corrected_data"]
+            "structured_data": state["corrected_data"],
+            "status": "PROCESSING"
         }
 
-    # Normal Flow
-    print(f" [Workflow] Extractor: Reading {state['file_name']}...")
-    tool = DataHarvesterTool()
-    result = tool.execute(state['file_path'])
+    logger.info(f"Calling FastMCP ({MCP_SERVER_PORT})...")
     
-    if result["status"] == "success":
-        return {"raw_text": result["text"]}
-    else:
+    # 2. Call Remote Tool
+    res_str = sync_mcp_call(MCP_SERVER_PORT, "ocr_extract", {"file_path": state['file_path']})
+    
+    # 3. Process Result
+    try:
+        # Parse JSON response
+        res = json.loads(res_str) if isinstance(res_str, str) else res_str
+        
+        if res.get("status") == "success": 
+            logger.info("OCR Success")
+            return {"raw_text": res["text"]}
+        
+        # FAIL CASE: OCR returned error
+        logger.error(f"OCR Failed: {res.get('message')}")
         return {
             "status": "FAILED", 
-            "error_message": f"OCR Failed: {result.get('message')}"
+            "error_message": res.get("message", "Unknown OCR Error"),
+            "raw_text": "" # Safety key to prevent crashes downstream
+        }
+            
+    except Exception as e:
+        logger.critical(f"CRASH: {e}")
+        return {
+            "status": "FAILED", 
+            "error_message": f"Extractor Crash: {e}",
+            "raw_text": "" 
         }

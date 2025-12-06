@@ -1,7 +1,7 @@
 [theme]
 base="light"
-primaryColor="#00A9E0"
-backgroundColor="#F9F9FB"
-secondaryBackgroundColor="#0F1A3B"
-textColor="#0F1A3B"
+primaryColor="#6366f1"        # Modern Indigo
+backgroundColor="#f8fafc"     # Very light slate/grey (easier on eyes than pure white)
+secondaryBackgroundColor="#ffffff" # White cards
+textColor="#1e293b"           # Dark slate (softer than pure black)
 font="sans serif"

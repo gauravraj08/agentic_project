@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Audit Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+        }
+        .status-box {
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .discrepancies {
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Invoice Audit Report</h1>
+
+        <div class="status-box pass">
+            Status: PASS
+        </div>
+
+        <div class="discrepancies">
+            <h2>Discrepancies:</h2>
+            <p>None</p>
+        </div>
+
+        <h2>Invoice Data</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Field</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Invoice Number</td>
+                    <td>INV-1001</td>
+                </tr>
+                <tr>
+                    <td>Invoice Date</td>
+                    <td>2025-03-14</td>
+                </tr>
+                <tr>
+                    <td>Vendor Name</td>
+                    <td>Global Logistics Ltd</td>
+                </tr>
+                <tr>
+                    <td>Currency</td>
+                    <td>$</td>
+                </tr>
+                <tr>
+                    <td>Total Amount</td>
+                    <td>1617.0</td>
+                </tr>
+                <tr>
+                    <td>Translation Confidence</td>
+                    <td>0.95</td>
+                </tr>
+                <tr>
+                    <td>Validation Status</td>
+                    <td>PASS</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Line Items</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                    <th>PO Number</th>
+                    <th>Item Code</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Pallet Wrapping Film</td>
+                    <td>50.0</td>
+                    <td>12.0</td>
+                    <td>600.0</td>
+                    <td>PO-1001</td>
+                    <td>SKU-001</td>
+                </tr>
+                <tr>
+                    <td>Industrial Gloves</td>
+                    <td>120.0</td>
+                    <td>3.5</td>
+                    <td>420.0</td>
+                    <td>PO-1001</td>
+                    <td>SKU-002</td>
+                </tr>
+                <tr>
+                    <td>Safety Helmets</td>
+                    <td>30.0</td>
+                    <td>15.0</td>
+                    <td>450.0</td>
+                    <td>PO-1001</td>
+                    <td>SKU-003</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
