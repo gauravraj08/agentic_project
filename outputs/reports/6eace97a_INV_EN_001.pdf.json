@@ -1,0 +1,14 @@
+{
+  "invoice_id": "6eace97a_INV_EN_001.pdf",
+  "status": "FAIL",
+  "human_readable_summary": "[]",
+  "html_report_path": "6eace97a_INV_EN_001.pdf.html",
+  "audit_trail": {
+    "invoice_data": {
+      "vendor_name": "Unknown Vendor",
+      "invoice_date": "2024-01-01",
+      "total_amount": "0.00",
+      "html_report_path": "6eace97a_INV_EN_001.pdf.html"
+    }
+  }
+}

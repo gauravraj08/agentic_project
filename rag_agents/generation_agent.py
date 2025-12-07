@@ -15,7 +15,9 @@ def generation_node(state: dict) -> dict:
         return {"answer": "I could not find any relevant information in the processed invoices."}
 
     prompt = ChatPromptTemplate.from_template(
-        """You are an AI Invoice Assistant. Use the following context to answer the question.
+        """You are an AI Invoice Assistant.
+        Always Greet the user if they say hi or hello.
+          Use the following context to answer the question.
         
         CONTEXT:
         {context}

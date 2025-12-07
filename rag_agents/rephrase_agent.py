@@ -1,23 +1,38 @@
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 from rag_agents.rag_llms import rephrase_llm
 
 def rephrase_node(state: dict) -> dict:
-    question = state["question"]
-    history = state.get("chat_history", [])
-    
-    if not history: return {"question": question}
-    
-    prompt = f"""
-    You are a Search Query Optimizer.
-    Rewrite the "Latest Question" into a standalone question based on the "Chat History".
-    If the question is already standalone, return it exactly as is.
-    
-    Chat History:
-    {history}
-    
-    Latest Question: {question}
-    
-    Standalone Question:
     """
-    new_q = rephrase_llm.invoke(prompt).strip()
-    print(f" [RAG] Rephrased: {new_q}")
-    return {"question": new_q}
+    Rewrites the question based on chat history so it makes sense to the retriever.
+    """
+    question = state["question"]
+    chat_history = state.get("chat_history", [])
+    
+    # If no history, no need to rephrase
+    if not chat_history:
+        return {"question": question}
+
+    print(" [RAG] Rephraser: Refining query based on history...")
+
+    prompt = ChatPromptTemplate.from_template(
+        """Given a chat history and the latest user question which might reference context in the chat history, 
+        formulate a standalone question which can be understood without the chat history. 
+        Do NOT answer the question, just rewrite it if needed.
+        
+        Chat History:
+        {chat_history}
+        
+        Latest Question: 
+        {question}
+        
+        Standalone Question:"""
+    )
+    
+    chain = prompt | rephrase_llm | StrOutputParser()
+    new_question = chain.invoke({"chat_history": chat_history, "question": question})
+    
+    print(f"   - Original: {question}")
+    print(f"   - Rephrased: {new_question}")
+    
+    return {"question": new_question}

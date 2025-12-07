@@ -1,6 +1,6 @@
 import os
 import json
-import google.generativeai as genai
+from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 from persona.persona_agent import load_prompts
@@ -11,17 +11,10 @@ logger = get_logger("SERVER_GOOGLE_8002")
 
 # Load Config
 load_dotenv()
-API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-
-if not API_KEY:
-    logger.critical("❌ FATAL: GEMINI_API_KEY is missing in .env")
-    exit(1)
-
-genai.configure(api_key=API_KEY)
 
 # Initialize Server & Models
 mcp = FastMCP("Google ADK Tools")
-gemini_model = genai.GenerativeModel('gemini-2.0-flash')
+gemini_model = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
 prompts = load_prompts() # Load YAML prompts
 
 @mcp.tool()
@@ -37,10 +30,10 @@ def translate_invoice(raw_text: str) -> str:
     try:
         # 2. Call Gemini
         full_prompt = f"{sys_prompt}\n\n--- INPUT TEXT ---\n{raw_text}"
-        response = gemini_model.generate_content(full_prompt)
+        response = gemini_model.invoke(full_prompt)
         
         # 3. Clean Output (Remove markdown ```json blocks)
-        clean_text = response.text.replace("```json", "").replace("```", "").strip()
+        clean_text = response.content.replace("```json", "").replace("```", "").strip()
         
         # 4. Verify JSON validity
         parsed = json.loads(clean_text) # Should not raise error
@@ -68,10 +61,10 @@ def generate_report(report_data: str) -> str:
     try:
         # Call Gemini
         full_prompt = f"{sys_prompt}\n\nDATA: {report_data}"
-        response = gemini_model.generate_content(full_prompt)
+        response = gemini_model.invoke(full_prompt)
         
         # Clean Output
-        html_content = response.text.replace("```html", "").replace("```", "").strip()
+        html_content = response.content.replace("```html", "").replace("```", "").strip()
         
         logger.info(f"✅ SUCCESS: Generated {len(html_content)} bytes of HTML")
         

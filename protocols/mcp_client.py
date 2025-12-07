@@ -1,8 +1,12 @@
 import asyncio
 import json
+import nest_asyncio 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from utils.logger import get_logger
+
+# Apply the patch immediately
+nest_asyncio.apply()
 
 logger = get_logger("MCP_CLIENT")
 
@@ -37,9 +41,13 @@ async def call_remote_mcp(port: int, tool_name: str, arguments: dict):
 def sync_mcp_call(port, tool_name, args):
     """Wrapper to run async MCP calls in sync agents"""
     try:
-        return asyncio.run(call_remote_mcp(port, tool_name, args))
+        # Check if a loop is already running (FastAPI case)
+        loop = asyncio.get_running_loop()
+        if loop.is_running():
+            # Use the existing loop
+            return loop.run_until_complete(call_remote_mcp(port, tool_name, args))
     except RuntimeError:
-        # Handle cases where Event Loop is already running (Streamlit)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        return loop.run_until_complete(call_remote_mcp(port, tool_name, args))
+        pass # No running loop, proceed to create new one
+
+    # Fallback for scripts/Streamlit where no loop exists
+    return asyncio.run(call_remote_mcp(port, tool_name, args))
